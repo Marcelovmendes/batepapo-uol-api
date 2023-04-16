@@ -11,11 +11,11 @@ server.use(cors());
 server.use(express.json());
 dotenv.config();
 
-const mongoClient = new MongoClient(process.env.MOGOBASE_URL)
+const mongoClient = new MongoClient(process.env.DATABASE_URL)
 
 try {
   await mongoClient.connect()
-} catch (err) {
+} catch (err) { 
   console.log(err.message)
 }
 const db = mongoClient.db()
@@ -34,21 +34,22 @@ server.post("/participants", async (req, res) => {
     const participantExists = await db.collection("participants").findOne({ name })
     if (participantExists) return res.status(409).send({ message: "Este participante já está cadastrado na sala." });
     
-    const now = new Date();
-    const participantData = { name, lastStatus: now }
+
+    const participantData = { name, lastStatus: Date.now() }
 
     await db.collection("participants").insertOne(participantData);
- 
+ console.log(participantData)
 
     const messageData = {
       from: name,
       to: "Todos",
-      text: "entrou na sala...",
+      text: "entra na sala...",
       type: "status",
-      time: dayjs(now).format("HH:mm:ss"),
+      time: dayjs().format("HH:mm:ss"),
     }
 
     await db.collection("messages").insertOne(messageData)
+    console.log(messageData)
     res.sendStatus(201);
 
   } catch (err) {
@@ -68,8 +69,8 @@ server.get("/participants", async (req,res) =>{
   res.sendStatus(err)    
   }
 })
+
 server.post("/messages", async (req,res)=>{
- const from = req.header('User')
   try{
     const schema =Joi.object({
       to:Joi.string().required(),
@@ -77,22 +78,76 @@ server.post("/messages", async (req,res)=>{
       type:Joi.string().valid( 'message','private_message').required()
     })
    const {error,value} =schema.validate(req.body)
-
+   
+   const from = req.header('User')
    if(error) return res.status(422).send(error.details[0].message)
-
     const time = dayjs().format("HH:mm:ss")
     value.time = time 
     
     await db.collection("messages").insertOne({
       from, 
       ...value
-    })
+    })    
     console.log(value)
+    console.log(from)
   res.status(201).send()
   }catch (err){
     console.log(err)
-    res.status(500).send("Internal Server Error")
+    res.status(500).send("Erro interno do servidor")
   }
 })
+
+server.get("/messages", async (req, res) => {
+  try {
+    const { header, query} = req;
+
+    const user = header("User");
+
+     query = {
+      $or: [
+        { to: 'Todos' },
+        { from: user },
+        { to: user, type: "private_message" },
+      ],
+    };
+    const limit = query.limit ? parseInt(query.limit) : null;
+
+    if (limit !== null && (isNaN(limit) || limit <= 0)) {
+      res.status(422).send("Paramento limite invalido");
+      return;
+    }
+
+    let messages;
+    
+    if (limit === null) {
+      messages = await db
+        .collection("messages")
+        .find(query)
+        .sort({ time: 1 })
+        .toArray();
+    } else {
+      messages = await db
+        .collection("messages")
+        .find(query)
+        .sort({ time: 1 })
+        .limit(limit)
+        .toArray();
+    }
+
+    res.send(messages);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Erro interno do servidor");
+  }
+});
+
+server.post("/status",(req,res) =>{
+
+  const user = req.header('User')
+  if( user === undefined || user === null) return res.status(404)
+  if(!user) return res.status(404)
+  res.send(202)
+})
+
 const PORT = 5000;
 server.listen(PORT);
