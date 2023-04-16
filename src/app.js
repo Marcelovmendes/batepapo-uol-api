@@ -11,7 +11,7 @@ server.use(cors());
 server.use(express.json());
 dotenv.config();
 
-const mongoClient = new MongoClient(process.env.DATABASE_URL)
+const mongoClient = new MongoClient(process.env.MOGOBASE_URL)
 
 try {
   await mongoClient.connect()
