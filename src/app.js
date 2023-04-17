@@ -22,14 +22,12 @@ const db = mongoClient.db();
 
 server.post("/participants", async (req, res) => {
   const { name } = req.body;
-  const user = req.header("User");
   try {
     const schema = Joi.object({
       name: Joi.string().required(),
     });
 
-    if (!user) return res.status(422).send();
-    const { error } = schema.validate({ name });
+    const { error } = schema.validate(name,{ abortEarly: false });
     if (error) return res.status(422).send({ message: error.message });
 
     const participantExists = await db
