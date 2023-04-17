@@ -72,6 +72,9 @@ server.get("/participants", async (req, res) => {
 });
 
 server.post("/messages", async (req, res) => {
+
+  const from = req.header("User") || req.header("user");
+  
   try {
     const schema = Joi.object({
       to: Joi.string().required(),
@@ -79,8 +82,6 @@ server.post("/messages", async (req, res) => {
       type: Joi.string().valid("message", "private_message").required(),
     });
     const { error, value } = schema.validate(req.body);
-
-    const from = req.header("User");
     if (error) return res.status(422).send(error.details[0].message);
     const time = dayjs().format("HH:mm:ss");
     value.time = time;
@@ -145,10 +146,9 @@ server.get("/messages", async (req, res) => {
 });
 
 server.post("/status", async (req, res) => {
-  const user = req.header("User");
+  const user = req.header("User") || req.header("user");
 
   try {
-    if (!user) return res.status(404);
     const checkParticipants = await db
       .collection("participants")
       .findOne({ name: user });
@@ -187,7 +187,7 @@ const inactivateUsers = async () => {
       })
     );
   } catch (error) {
-    console.error("Error inactivating users:", error);
+    console.error(error);
   }
 };
 const PORT = 5000;
