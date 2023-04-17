@@ -22,12 +22,13 @@ const db = mongoClient.db();
 
 server.post("/participants", async (req, res) => {
   const { name } = req.body;
+
   try {
     const schema = Joi.object({
       name: Joi.string().required(),
     });
 
-    const { error } = schema.validate(name,{ abortEarly: false });
+    const { error } = schema.validate({ name });
     if (error) return res.status(422).send({ message: error.message });
 
     const participantExists = await db
@@ -38,13 +39,6 @@ server.post("/participants", async (req, res) => {
         .status(409)
         .send({ message: "Este participante já está cadastrado na sala." });
 
-    const userExists = await db
-      .collection("participants")
-      .findOne({ name: user });
-    if (!userExists)
-      return res
-        .status(422)
-        .send({ message: "Usuário não cadastrado na sala." });
     const participantData = { name, lastStatus: Date.now() };
 
     await db.collection("participants").insertOne(participantData);
@@ -63,10 +57,9 @@ server.post("/participants", async (req, res) => {
     res.sendStatus(201);
   } catch (err) {
     console.log(err.message);
-    res.status(500).json({ message: "Erro interno do servidor." });
+    res.status(500).send({ message: "Erro interno do servidor." });
   }
 });
-
 server.get("/participants", async (req, res) => {
   try {
     const participants = await db.collection("participants").find().toArray();
@@ -92,6 +85,7 @@ server.post("/messages", async (req, res) => {
     const time = dayjs().format("HH:mm:ss");
     value.time = time;
 
+    if(!from) return res.status(422)
     await db.collection("messages").insertOne({
       from,
       ...value,
