@@ -99,11 +99,11 @@ server.post("/messages", async (req,res)=>{
 
 server.get("/messages", async (req, res) => {
   try {
-    const { header, query} = req;
+    const { headers, query} = req;
 
-    const user = header("User");
+    const user = headers.user;
 
-     query = {
+    const messageQuery = {
       $or: [
         { to: 'Todos' },
         { from: user },
@@ -113,7 +113,7 @@ server.get("/messages", async (req, res) => {
     const limit = query.limit ? parseInt(query.limit) : null;
 
     if (limit !== null && (isNaN(limit) || limit <= 0)) {
-      res.status(422).send("Paramento limite invalido");
+      res.status(422).send("Parametro invalido");
       return;
     }
 
@@ -122,18 +122,19 @@ server.get("/messages", async (req, res) => {
     if (limit === null) {
       messages = await db
         .collection("messages")
-        .find(query)
+        .find(messageQuery)
         .sort({ time: 1 })
         .toArray();
     } else {
       messages = await db
         .collection("messages")
-        .find(query)
+        .find(messageQuery)
         .sort({ time: 1 })
         .limit(limit)
         .toArray();
     }
-
+  console.log('user:',user)
+  console.log('mensagens:',messages)
     res.send(messages);
   } catch (err) {
     console.log(err);
@@ -143,8 +144,7 @@ server.get("/messages", async (req, res) => {
 
 server.post("/status",(req,res) =>{
 
-  const user = req.header('User')
-  if( user === undefined || user === null) return res.status(404)
+  const user = req.headers
   if(!user) return res.status(404)
   res.send(202)
 })
