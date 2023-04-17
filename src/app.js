@@ -86,7 +86,8 @@ server.post("/messages", async (req, res) => {
     const time = dayjs().format("HH:mm:ss");
     value.time = time;
 
-    if(!from) return res.sendStatus(422)
+    if(from === undefined) return res.sendStatus(422);
+
     await db.collection("messages").insertOne({
       from,
       ...value,
@@ -149,6 +150,8 @@ server.post("/status", async (req, res) => {
   const user = req.header("User") || req.header("user");
 
   try {
+    if(user === undefined) return res.sendStatus(422);
+
     const checkParticipants = await db
       .collection("participants")
       .findOne({ name: user });
